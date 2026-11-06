@@ -90,8 +90,9 @@ Do not present a suspected cause as confirmed.
 
 RESPONSE_PROMPT = """
 Write a concise response of two or three sentences describing what was done.
-Mention the risk severity and the most important missing evidence when available.
-Remind the user that AI-generated causes are suggestions requiring qualified
-human review. Do not claim that an investigation action was completed unless
-the supplied result confirms it.
+If risk severity is null or unavailable, say it is undetermined or not yet
+assessed; never call it "none". Mention the most important missing evidence
+when available. Remind the user that AI-generated causes are suggestions
+requiring qualified human review. Do not claim that an investigation action
+was completed unless the supplied result confirms it.
 """.strip()
