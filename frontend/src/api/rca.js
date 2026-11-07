@@ -39,9 +39,19 @@ export function uploadDoc(file, form, message = '') {
   })
 }
 
-export function saveInvestigation(form, noConfirmedRootCause, actor = 'user') {
-  return request('/api/investigations', {
-    method: 'POST',
+export function saveInvestigation(
+  form,
+  noConfirmedRootCause,
+  actor = 'user',
+  investigationId = null,
+) {
+  const isUpdate = investigationId !== null
+  const url = isUpdate
+    ? `/api/investigations/${investigationId}`
+    : '/api/investigations'
+
+  return request(url, {
+    method: isUpdate ? 'PUT' : 'POST',
     headers: {
       'Content-Type': 'application/json',
     },

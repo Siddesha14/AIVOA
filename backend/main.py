@@ -282,6 +282,115 @@ def get_investigation(
         form=_form_from_investigation(investigation),
     )
 
+@app.put(
+    "/api/investigations/{investigation_id}",
+    response_model=SaveInvestigationResponse,
+)
+def update_investigation(
+    investigation_id: int,
+    request: SaveInvestigationRequest,
+    db: Session = Depends(get_db),
+) -> SaveInvestigationResponse:
+    investigation = db.get(Investigation, investigation_id)
+    if investigation is None:
+        raise HTTPException(status_code=404, detail="Investigation not found.")
+
+    form_data = request.form.model_dump()
+    causes = form_data["analysis"]["causes"]
+    has_confirmed_cause = any(
+        cause["status"] == "confirmed"
+        for cause in causes
+    )
+    if not has_confirmed_cause and not request.no_confirmed_root_cause:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Confirm at least one cause or set "
+                "no_confirmed_root_cause to true before saving."
+            ),
+        )
+
+    before = _form_from_investigation(investigation).model_dump()
+    existing_causes = {
+        cause.cause_id: cause
+        for cause in investigation.causes
+    }
+    incoming_cause_ids = {cause["id"] for cause in causes}
+
+    for cause in causes:
+        existing = existing_causes.get(cause["id"])
+        if existing and existing.status in ("confirmed", "rejected"):
+            cause["status"] = existing.status
+
+    for cause_id, existing in existing_causes.items():
+        if (
+            existing.status in ("confirmed", "rejected")
+            and cause_id not in incoming_cause_ids
+        ):
+            causes.append(
+                {
+                    "id": existing.cause_id,
+                    "text": existing.text,
+                    "category": existing.category,
+                    "is_probable_root": existing.is_probable_root,
+                    "confidence": existing.confidence,
+                    "source_quote": existing.source_quote,
+                    "status": existing.status,
+                }
+            )
+
+    investigation.summary = form_data["summary"]
+    investigation.risk = form_data["risk"]
+
+    investigation.causes = [
+        CauseRecord(
+            cause_id=cause["id"],
+            text=cause["text"],
+            category=cause["category"],
+            is_probable_root=cause["is_probable_root"],
+            confidence=cause["confidence"],
+            source_quote=cause["source_quote"],
+            status=cause["status"],
+        )
+        for cause in causes
+    ]
+    investigation.whys = [
+        WhyRecord(**why)
+        for why in form_data["analysis"]["whys"]
+    ]
+    investigation.evidence_items = [
+        EvidenceRecord(**item)
+        for item in form_data["analysis"]["evidence"]
+    ]
+    investigation.capas = [
+        CapaRecord(
+            capa_id=capa["id"],
+            type=capa["type"],
+            action=capa["action"],
+            rationale=capa["rationale"],
+            effectiveness_check=capa["effectiveness_check"],
+            linked_cause_id=capa["linked_cause_id"],
+        )
+        for capa in form_data["analysis"]["capas"]
+    ]
+
+    db.add(
+        AuditLog(
+            investigation_id=investigation.id,
+            actor=request.actor,
+            action="investigation_updated",
+            before=before,
+            after=form_data,
+        )
+    )
+    db.commit()
+    db.refresh(investigation)
+
+    return SaveInvestigationResponse(
+        id=investigation.id,
+        status=investigation.status,
+        form=_form_from_investigation(investigation),
+    )
 
 @app.patch("/api/investigations/{investigation_id}/causes/{cause_id}")
 def review_cause(

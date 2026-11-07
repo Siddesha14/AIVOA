@@ -68,8 +68,10 @@ function InvestigationForm() {
 
     try {
       const result = await saveInvestigation(
-        currentForm,
-        noConfirmedRootCause,
+          currentForm,
+          noConfirmedRootCause,
+          'user',
+          investigationId ? Number(investigationId) : null,
       )
       setInvestigationId(String(result.id))
       setLoadId(String(result.id))
