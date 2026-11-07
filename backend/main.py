@@ -38,6 +38,8 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     form: FormState = Field(default_factory=FormState)
+    investigation_id: int | None = None
+    actor: str = "user"
 
 
 class ChatResponse(BaseModel):
@@ -95,6 +97,39 @@ def _invoke_graph(
         changed=result.get("changed", []),
     )
 
+def _invoke_graph_with_audit(
+    message: str,
+    form: FormState,
+    db: Session,
+    investigation_id: int | None = None,
+    document_text: str = "",
+    actor: str = "user",
+) -> ChatResponse:
+    if investigation_id is not None:
+        investigation = db.get(Investigation, investigation_id)
+        if investigation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Investigation not found.",
+            )
+
+    before = form.model_dump()
+    result = _invoke_graph(message, form, document_text)
+    after = result.form.model_dump()
+
+    if investigation_id is not None and before != after:
+        db.add(
+            AuditLog(
+                investigation_id=investigation_id,
+                actor=actor,
+                action="chat_update",
+                before=before,
+                after=after,
+            )
+        )
+        db.commit()
+
+    return result
 
 def _form_from_investigation(investigation: Investigation) -> FormState:
     analysis = {
@@ -153,8 +188,17 @@ def health_check() -> dict[str, str]:
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
-    return _invoke_graph(request.message, request.form)
+def chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+) -> ChatResponse:
+    return _invoke_graph_with_audit(
+        request.message,
+        request.form,
+        db,
+        request.investigation_id,
+        actor=request.actor,
+    )
 
 
 @app.post("/api/chat/upload", response_model=ChatResponse)
@@ -162,6 +206,9 @@ async def upload_document(
     file: UploadFile = File(...),
     message: str = FormField(""),
     form: str = FormField(...),
+    investigation_id: int | None = FormField(None),
+    actor: str = FormField("user"),
+    db: Session = Depends(get_db),
 ) -> ChatResponse:
     try:
         form_state = FormState.model_validate_json(form)
@@ -171,18 +218,43 @@ async def upload_document(
             detail=f"Invalid form data: {exc}",
         ) from exc
 
+    investigation = None
+    if investigation_id is not None:
+        investigation = db.get(Investigation, investigation_id)
+        if investigation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Investigation not found.",
+            )
+
     content = await file.read()
     try:
         document_text = extract_document_text(file.filename or "", content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return await run_in_threadpool(
+    before = form_state.model_dump()
+    result = await run_in_threadpool(
         _invoke_graph,
         message or "Analyze the uploaded investigation document.",
         form_state,
         document_text,
     )
+    after = result.form.model_dump()
+
+    if investigation is not None and before != after:
+        db.add(
+            AuditLog(
+                investigation_id=investigation.id,
+                actor=actor,
+                action="document_analysis",
+                before=before,
+                after=after,
+            )
+        )
+        db.commit()
+
+    return result
 
 
 @app.post("/api/investigations", response_model=SaveInvestigationResponse)

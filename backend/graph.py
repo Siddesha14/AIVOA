@@ -183,6 +183,30 @@ def analyze_node(state: RCAState) -> dict:
             ),
         ]
     )
+    documentary_terms = (
+        "log",
+        "logs",
+        "record",
+        "records",
+        "certificate",
+        "certificates",
+        "report",
+        "reports",
+        "sop",
+        "standard operating procedure",
+        "batch manufacturing record",
+        "bmr",
+    )
+
+    for evidence_item in result.analysis.evidence:
+        item_name = evidence_item.item.lower()
+        if any(term in item_name for term in documentary_terms):
+            evidence_item.status = "missing"
+            if not evidence_item.why_needed:
+                evidence_item.why_needed = (
+                    "The underlying record contents have not been provided "
+                    "or verified."
+                )
 
     locked_by_id = {cause["id"]: cause for cause in locked_causes}
     suggested_causes = []

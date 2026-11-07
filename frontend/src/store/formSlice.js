@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
+  investigationId: null,
   summary: {
     deviation_id: null,
     title: null,
@@ -39,7 +40,10 @@ const formSlice = createSlice({
       state.risk = action.payload.risk
       state.analysis = action.payload.analysis
     },
-    setHighlighted(state, action) {
+    setInvestigationId(state, action) {
+    state.investigationId = action.payload
+  },
+      setHighlighted(state, action) {
       state.highlighted = action.payload
     },
     clearHighlighted(state) {
@@ -51,7 +55,7 @@ const formSlice = createSlice({
   },
 })
 
-export const { setForm, setHighlighted, clearHighlighted, resetForm } =
+export const { setForm, setHighlighted, clearHighlighted, resetForm, setInvestigationId } =
   formSlice.actions
 
 export default formSlice.reducer

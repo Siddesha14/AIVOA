@@ -17,21 +17,29 @@ async function request(url, options = {}) {
   return response.json()
 }
 
-export function sendMessage(message, form) {
+export function sendMessage(message, form, investigationId = null) {
   return request('/api/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ message, form }),
+    body: JSON.stringify({
+      message,
+      form,
+      investigation_id: investigationId,
+    }),
   })
 }
 
-export function uploadDoc(file, form, message = '') {
+export function uploadDoc(file, form, message = '', investigationId = null) {
   const body = new FormData()
   body.append('file', file)
   body.append('message', message)
   body.append('form', JSON.stringify(form))
+
+  if (investigationId !== null) {
+    body.append('investigation_id', String(investigationId))
+  }
 
   return request('/api/chat/upload', {
     method: 'POST',

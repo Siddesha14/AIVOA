@@ -77,7 +77,11 @@ function ChatPanel() {
     dispatch(setLoading(true))
 
     try {
-      const result = await sendMessage(text, currentForm())
+      const result = await sendMessage(
+        text,
+        currentForm(),
+        form.investigationId,
+      )
       applyResponse(result)
     } catch (requestError) {
       const errorMessage =
@@ -113,7 +117,12 @@ function ChatPanel() {
     dispatch(setLoading(true))
 
     try {
-      const result = await uploadDoc(file, currentForm())
+      const result = await uploadDoc(
+        file,
+        currentForm(),
+        '',
+        form.investigationId,
+      )
       applyResponse(result)
     } catch (requestError) {
       const errorMessage =

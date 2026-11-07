@@ -6,7 +6,8 @@ import {
   reviewCause,
   saveInvestigation,
 } from '../../api/rca'
-import { setForm } from '../../store/formSlice'
+import { setForm, setInvestigationId} from '../../store/formSlice'
+import { clearMessages } from '../../store/chatSlice'
 
 const summaryFields = [
   ['deviation_id', 'Deviation reference'],
@@ -40,7 +41,7 @@ function displayValue(value) {
 function InvestigationForm() {
   const dispatch = useDispatch()
   const form = useSelector((state) => state.form)
-  const [investigationId, setInvestigationId] = useState('')
+  const investigationId = form.investigationId
   const [loadId, setLoadId] = useState('')
   const [noConfirmedRootCause, setNoConfirmedRootCause] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -73,7 +74,7 @@ function InvestigationForm() {
           'user',
           investigationId ? Number(investigationId) : null,
       )
-      setInvestigationId(String(result.id))
+      dispatch(setInvestigationId(result.id))
       setLoadId(String(result.id))
       setNotice(`Investigation ${result.id} saved.`)
     } catch (requestError) {
@@ -99,7 +100,8 @@ function InvestigationForm() {
     try {
       const result = await loadInvestigation(id)
       dispatch(setForm(result.form))
-      setInvestigationId(String(result.id))
+      dispatch(clearMessages())
+      dispatch(setInvestigationId(result.id))
       setNoConfirmedRootCause(false)
       setNotice(`Investigation ${result.id} loaded.`)
     } catch (requestError) {
