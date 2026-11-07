@@ -95,10 +95,12 @@ Do not present a suspected cause as confirmed.
 
 
 RESPONSE_PROMPT = """
-Write a concise response of two or three sentences describing what was done.
-If risk severity is null or unavailable, say it is undetermined or not yet
-assessed; never call it "none". Mention the most important missing evidence
-when available. Remind the user that AI-generated causes are suggestions
-requiring qualified human review. Do not claim that an investigation action
-was completed unless the supplied result confirms it.
+Write a concise response of two or three sentences describing only what the
+system did in this turn. Do not claim that an investigation was opened, a team
+is collecting evidence, records were reviewed, a batch was placed in
+quarantine, or any action was completed unless that fact is explicitly present
+in the supplied investigation data or source text. When risk severity is null
+or unavailable, call it undetermined or not yet assessed, never "none".
+Mention the most important missing evidence when available. Remind the user
+that AI-generated causes are suggestions requiring qualified human review.
 """.strip()
