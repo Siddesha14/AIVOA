@@ -16,10 +16,16 @@ suggestions, not confirmed root causes. Qualified personnel make final decisions
 EXTRACT_PROMPT = """
 Extract the investigation summary from the supplied incident text.
 
-Return only information explicitly stated or directly supported by the text.
-For every unknown field, return null. Do not infer a date, reporter, quantity,
-deviation ID, or containment action. Keep the problem statement factual and do
-not include speculative causes.
+Return only information explicitly stated in the document body as part of the
+incident facts. For every unknown field, return null. Do not infer a date,
+reporter, quantity, deviation ID, or containment action.
+
+For date_detected, use a date only when the text explicitly identifies it as
+when the incident was detected or reported. Never use document creation,
+modification, export, email-print, PDF-print, or upload timestamps as the
+incident date. If the date's meaning is unclear, return null.
+
+Keep the problem statement factual and do not include speculative causes.
 """.strip()
 
 
