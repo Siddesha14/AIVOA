@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 
 from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 
 
 SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".eml"}
@@ -24,11 +25,16 @@ def extract_document_text(filename: str, content: bytes) -> str:
         raise ValueError("The uploaded file is empty.")
 
     if extension == ".pdf":
-        reader = PdfReader(BytesIO(content))
-        text = "\n".join(
-            page.extract_text() or ""
-            for page in reader.pages
-        )
+        try:
+            reader = PdfReader(BytesIO(content))
+            text = "\n".join(
+                page.extract_text() or ""
+                for page in reader.pages
+            )
+        except PdfReadError as exc:
+            raise ValueError(
+                "The uploaded PDF is invalid or damaged."
+            ) from exc
     else:
         try:
             text = content.decode("utf-8-sig")
